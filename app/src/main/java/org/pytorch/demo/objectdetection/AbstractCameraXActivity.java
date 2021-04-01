@@ -88,6 +88,7 @@ public abstract class AbstractCameraXActivity<R> extends BaseModuleActivity {
             }
 
             final R result = analyzeImage(image, rotationDegrees);
+
             if (result != null) {
                 mLastAnalysisResultTime = SystemClock.elapsedRealtime();
                 runOnUiThread(() -> applyToUiAnalyzeImageResult(result));
