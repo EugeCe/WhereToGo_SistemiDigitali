@@ -104,4 +104,7 @@ public abstract class AbstractCameraXActivity<R> extends BaseModuleActivity {
 
     @UiThread
     protected abstract void applyToUiAnalyzeImageResult(R result);
+
+ //   @UiThread
+   // protected abstract void applyToUiAnalyzeImageResult(R result, long timeElapsed);
 }

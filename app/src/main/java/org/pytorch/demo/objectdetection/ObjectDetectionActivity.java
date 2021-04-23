@@ -8,6 +8,7 @@ import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.media.Image;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.TextureView;
 import android.view.ViewStub;
@@ -33,9 +34,16 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
     static class AnalysisResult {
         private final ArrayList<Result> mResults;
+        private final long mTimes;
 
+
+        public AnalysisResult(ArrayList<Result> results, long times) {
+            mResults = results;
+            mTimes = times;
+        }
         public AnalysisResult(ArrayList<Result> results) {
             mResults = results;
+            mTimes = -1;
         }
     }
 
@@ -54,10 +62,16 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
     @Override
     protected void applyToUiAnalyzeImageResult(AnalysisResult result) {
-        mResultView.setResults(result.mResults);
+        mResultView.setResults(result.mResults, result.mTimes);
         mResultView.invalidate();
     }
-
+/*
+    @Override
+    protected void applyToUiAnalyzeImageResult(AnalysisResult result, long timeElapsed) {
+        mResultView.setResults(result.mResults, timeElapsed);
+        mResultView.invalidate();
+    }
+*/
     private Bitmap imgToBitmap(Image image) {
         Image.Plane[] planes = image.getPlanes();
         ByteBuffer yBuffer = planes[0].getBuffer();
@@ -85,6 +99,10 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
     @WorkerThread
     @Nullable
     protected AnalysisResult analyzeImage(ImageProxy image, int rotationDegrees) {
+
+        //toDo added in order to get analysis time
+        long mLastAnalysisStartTime = SystemClock.elapsedRealtime();
+
         if (mModule == null) {
             mModule = PyTorchAndroid.loadModuleFromAsset(getAssets(), "yolov5s.torchscript.pt");
         }
@@ -105,6 +123,13 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
         float ivScaleY = (float)mResultView.getHeight() / bitmap.getHeight();
 
         final ArrayList<Result> results = PrePostProcessor.outputsToNMSPredictions(outputs, imgScaleX, imgScaleY, ivScaleX, ivScaleY, 0, 0);
-        return new AnalysisResult(results);
+
+        //toDo added in order to get analysis time
+        long mLastAnalysisEndTime = SystemClock.elapsedRealtime();
+
+        long timeElapsed = mLastAnalysisEndTime - mLastAnalysisStartTime;
+
+
+        return new AnalysisResult(results, timeElapsed);
     }
 }

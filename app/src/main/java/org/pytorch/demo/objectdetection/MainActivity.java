@@ -22,6 +22,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
@@ -220,18 +221,32 @@ public class MainActivity extends AppCompatActivity implements Runnable {
 
     @Override
     public void run() {
+
+        //toDo added in order to get analysis time
+        long mLastAnalysisStartTime = SystemClock.elapsedRealtime();
+
         Bitmap resizedBitmap = Bitmap.createScaledBitmap(mBitmap, PrePostProcessor.mInputWidth, PrePostProcessor.mInputHeight, true);
+
         final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resizedBitmap, PrePostProcessor.NO_MEAN_RGB, PrePostProcessor.NO_STD_RGB);
+
         IValue[] outputTuple = mModule.forward(IValue.from(inputTensor)).toTuple();
+
         final Tensor outputTensor = outputTuple[0].toTensor();
+
         final float[] outputs = outputTensor.getDataAsFloatArray();
+
         final ArrayList<Result> results =  PrePostProcessor.outputsToNMSPredictions(outputs, mImgScaleX, mImgScaleY, mIvScaleX, mIvScaleY, mStartX, mStartY);
+
+        //toDo added in order to get analysis time
+        long mLastAnalysisEndTime = SystemClock.elapsedRealtime();
+
+        long timeElapsed = mLastAnalysisEndTime - mLastAnalysisStartTime;
 
         runOnUiThread(() -> {
             mButtonDetect.setEnabled(true);
             mButtonDetect.setText(getString(R.string.detect));
             mProgressBar.setVisibility(ProgressBar.INVISIBLE);
-            mResultView.setResults(results);
+            mResultView.setResults(results, timeElapsed);
             mResultView.invalidate();
             mResultView.setVisibility(View.VISIBLE);
         });

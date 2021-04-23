@@ -85,7 +85,7 @@
     <orderEntry type="library" name="Gradle: androidx.lifecycle:lifecycle-viewmodel:2.1.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.arch.core:core-runtime:2.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.interpolator:interpolator:1.0.0@aar" level="project" />
-    <orderEntry type="library" name="Gradle: org.pytorch:pytorch_android:1.7.0@aar" level="project" />
-    <orderEntry type="library" name="Gradle: org.pytorch:pytorch_android_torchvision:1.7.0@aar" level="project" />
+    <orderEntry type="library" name="Gradle: org.pytorch:pytorch_android:1.8.0@aar" level="project" />
+    <orderEntry type="library" name="Gradle: org.pytorch:pytorch_android_torchvision:1.8.0@aar" level="project" />
   </component>
 </module>
