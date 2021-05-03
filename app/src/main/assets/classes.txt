@@ -1,4 +1,2 @@
 door
 handle
-cabinet door
-refrigerator door

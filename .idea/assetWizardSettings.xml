@@ -80,7 +80,8 @@
                                             <option name="values">
                                               <map>
                                                 <entry key="color" value="000000" />
-                                                <entry key="imagePath" value="$PROJECT_DIR$/../../../index.webp" />
+                                                <entry key="imagePath" value="$PROJECT_DIR$/../../../door_PNG17633.png" />
+                                                <entry key="scalingPercent" value="47" />
                                               </map>
                                             </option>
                                           </PersistentState>
@@ -108,6 +109,11 @@
                                           </PersistentState>
                                         </value>
                                       </entry>
+                                    </map>
+                                  </option>
+                                  <option name="values">
+                                    <map>
+                                      <entry key="outputName" value="ic_launcher_definitiva" />
                                     </map>
                                   </option>
                                 </PersistentState>
