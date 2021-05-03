@@ -8,10 +8,13 @@ import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.media.Image;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.SystemClock;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.TextureView;
 import android.view.ViewStub;
+import android.widget.EditText;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
@@ -27,10 +30,32 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Locale;
+import java.util.stream.Stream;
 
 public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetectionActivity.AnalysisResult> {
     private Module mModule = null;
     private ResultView mResultView;
+
+    //Todo Voice variables
+    EditText write;
+    TextToSpeech ttobj;
+    //end
+
+    @Override
+    protected void onCreate(Bundle savedInstance) {
+
+        super.onCreate(savedInstance);
+
+        //ToDo init Voice
+        ttobj = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+            }
+        });
+        ttobj.setLanguage(Locale.UK);
+    }
+
 
     static class AnalysisResult {
         private final ArrayList<Result> mResults;
@@ -63,15 +88,59 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
     @Override
     protected void applyToUiAnalyzeImageResult(AnalysisResult result) {
         mResultView.setResults(result.mResults, result.mTimes);
+
+        //Todo Voice
+        if(!result.mResults.isEmpty()){
+
+          long nDoors = result.mResults.stream().map(x ->
+                          x.classIndex
+                  //PrePostProcessor.mClasses[]
+          ).filter(
+                  x -> x == 0).count();
+
+          long nHandles = result.mResults.stream().map(x ->
+                          x.classIndex
+                  //PrePostProcessor.mClasses[]
+          ).filter(
+                  x -> x == 1).count();
+
+          String toSpeak = "";
+          if(nDoors != 0 && nHandles != 0){
+              toSpeak = nDoors + " doors and " + nHandles + " handles";
+          }
+          if(nDoors == 0 && nHandles != 0){
+              toSpeak = nHandles + " handles";
+          }
+
+          if(nDoors != 0 && nHandles == 0){
+              toSpeak = nDoors + " doors";
+          }
+          speak(toSpeak);
+
+            //String mClass = PrePostProcessor.mClasses[result.classIndex];
+
+
+        }
+
         mResultView.invalidate();
+
+
     }
-/*
-    @Override
-    protected void applyToUiAnalyzeImageResult(AnalysisResult result, long timeElapsed) {
-        mResultView.setResults(result.mResults, timeElapsed);
-        mResultView.invalidate();
+
+
+
+    private void speak(String toSpeak) {
+
+        ttobj.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null, "");
     }
-*/
+
+    /*
+        @Override
+        protected void applyToUiAnalyzeImageResult(AnalysisResult result, long timeElapsed) {
+            mResultView.setResults(result.mResults, timeElapsed);
+            mResultView.invalidate();
+        }
+    */
     private Bitmap imgToBitmap(Image image) {
         Image.Plane[] planes = image.getPlanes();
         ByteBuffer yBuffer = planes[0].getBuffer();
@@ -128,7 +197,6 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
         long mLastAnalysisEndTime = SystemClock.elapsedRealtime();
 
         long timeElapsed = mLastAnalysisEndTime - mLastAnalysisStartTime;
-
 
         return new AnalysisResult(results, timeElapsed);
     }

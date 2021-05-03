@@ -24,9 +24,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.provider.MediaStore;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 
@@ -45,6 +47,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements Runnable {
     public static final String MODEL_FILE = "yolov5s.torchscript.pt";
@@ -60,9 +63,12 @@ public class MainActivity extends AppCompatActivity implements Runnable {
     private Module mModule = null;
     private float mImgScaleX, mImgScaleY, mIvScaleX, mIvScaleY, mStartX, mStartY;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
@@ -142,10 +148,15 @@ public class MainActivity extends AppCompatActivity implements Runnable {
             }
         });
 
+
         mButtonDetect = findViewById(R.id.detectButton);
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
         mButtonDetect.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
+
+                //ToDo
+                //ttobj.speak("Detect", TextToSpeech.QUEUE_FLUSH, null, "");
+
                 mButtonDetect.setEnabled(false);
                 mProgressBar.setVisibility(ProgressBar.VISIBLE);
                 mButtonDetect.setText(getString(R.string.run_model));
