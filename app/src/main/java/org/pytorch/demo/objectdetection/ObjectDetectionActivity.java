@@ -12,6 +12,8 @@ import android.os.Handler;
 import android.os.SystemClock;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.TextureView;
 import android.view.ViewStub;
 import android.widget.EditText;
@@ -19,6 +21,7 @@ import android.widget.EditText;
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
 import androidx.camera.core.ImageProxy;
+import androidx.core.view.GestureDetectorCompat;
 
 import org.pytorch.IValue;
 import org.pytorch.Module;
@@ -29,23 +32,43 @@ import org.pytorch.torchvision.TensorImageUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.stream.Stream;
 
-public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetectionActivity.AnalysisResult> {
+public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetectionActivity.AnalysisResult>
+        implements GestureDetector.OnDoubleTapListener , GestureDetector.OnGestureListener{
     private Module mModule = null;
     private ResultView mResultView;
 
     //Todo Voice variables
-    EditText write;
-    TextToSpeech ttobj;
+    //EditText write;
+    private TextToSpeech ttobj;
+    private Boolean canISpeak = true;
+
+
+    //timer
+    private Timer timer;
+    public static final int VOICE_INTERVAL = 1500;
     //end
+
+    //gestures
+    private GestureDetectorCompat mDetector;
+
 
     @Override
     protected void onCreate(Bundle savedInstance) {
 
         super.onCreate(savedInstance);
+
+        //Todo Gesture
+        mDetector = new GestureDetectorCompat(this, this);
+        mDetector.setOnDoubleTapListener(this);
+
+        //end
 
         //ToDo init Voice
         ttobj = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
@@ -54,6 +77,70 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
             }
         });
         ttobj.setLanguage(Locale.UK);
+
+        timer = new Timer();
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event){
+        if (this.mDetector.onTouchEvent(event)) {
+            return true;
+        }
+        return super.onTouchEvent(event);
+    }
+
+
+    @Override
+    public boolean onSingleTapConfirmed(MotionEvent e) {
+        return false;
+    }
+
+    @Override
+    public boolean onDoubleTap(MotionEvent e) {
+
+        if(canISpeak){
+            speak("Voice off");
+            canISpeak = false;
+        } else {
+            speak("Voice on");
+            canISpeak = true;
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean onDoubleTapEvent(MotionEvent e) {
+        return false;
+    }
+
+    @Override
+    public boolean onDown(MotionEvent e) {
+        return false;
+    }
+
+    @Override
+    public void onShowPress(MotionEvent e) {
+
+    }
+
+    @Override
+    public boolean onSingleTapUp(MotionEvent e) {
+        return false;
+    }
+
+    @Override
+    public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+        return false;
+    }
+
+    @Override
+    public void onLongPress(MotionEvent e) {
+    }
+
+    @Override
+    public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+        return false;
     }
 
 
@@ -66,6 +153,7 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
             mResults = results;
             mTimes = times;
         }
+
         public AnalysisResult(ArrayList<Result> results) {
             mResults = results;
             mTimes = -1;
@@ -90,36 +178,46 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
         mResultView.setResults(result.mResults, result.mTimes);
 
         //Todo Voice
-        if(!result.mResults.isEmpty()){
+        if (!result.mResults.isEmpty() && canISpeak /*Useless computation if i cannot speak*/) {
 
-          long nDoors = result.mResults.stream().map(x ->
-                          x.classIndex
-                  //PrePostProcessor.mClasses[]
-          ).filter(
-                  x -> x == 0).count();
+            long nDoors = result.mResults.stream().map(x ->
+                            x.classIndex
+                    //PrePostProcessor.mClasses[]
+            ).filter(
+                    x -> x == 0).count();
 
-          long nHandles = result.mResults.stream().map(x ->
-                          x.classIndex
-                  //PrePostProcessor.mClasses[]
-          ).filter(
-                  x -> x == 1).count();
+            long nHandles = result.mResults.stream().map(x ->
+                            x.classIndex
+                    //PrePostProcessor.mClasses[]
+            ).filter(
+                    x -> x == 1).count();
 
-          String toSpeak = "";
-          if(nDoors != 0 && nHandles != 0){
-              toSpeak = nDoors + " doors and " + nHandles + " handles";
-          }
-          if(nDoors == 0 && nHandles != 0){
-              toSpeak = nHandles + " handles";
-          }
+            String toSpeak = "";
+            if (nDoors != 0 && nHandles != 0) {
+                toSpeak = nDoors + " doors and " + nHandles + " handles";
+            }
+            if (nDoors == 0 && nHandles != 0) {
+                toSpeak = nHandles + " handles";
+            }
 
-          if(nDoors != 0 && nHandles == 0){
-              toSpeak = nDoors + " doors";
-          }
-          speak(toSpeak);
+            if (nDoors != 0 && nHandles == 0) {
+                toSpeak = nDoors + " doors";
+            }
+            speak(toSpeak);
 
             //String mClass = PrePostProcessor.mClasses[result.classIndex];
 
+            canISpeak = false;
+            //If i double taped the screen here
+            //there is inconsistence possibitity.
+            //It can be fixed with another boolean "voiceOn"
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    canISpeak = true;
+                }
 
+            }, VOICE_INTERVAL);
         }
 
         mResultView.invalidate();
@@ -128,10 +226,9 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
     }
 
 
-
     private void speak(String toSpeak) {
-
-        ttobj.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null, "");
+        if (canISpeak)
+            ttobj.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null, "");
     }
 
     /*
@@ -186,10 +283,10 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
         final Tensor outputTensor = outputTuple[0].toTensor();
         final float[] outputs = outputTensor.getDataAsFloatArray();
 
-        float imgScaleX = (float)bitmap.getWidth() / PrePostProcessor.mInputWidth;
-        float imgScaleY = (float)bitmap.getHeight() / PrePostProcessor.mInputHeight;
-        float ivScaleX = (float)mResultView.getWidth() / bitmap.getWidth();
-        float ivScaleY = (float)mResultView.getHeight() / bitmap.getHeight();
+        float imgScaleX = (float) bitmap.getWidth() / PrePostProcessor.mInputWidth;
+        float imgScaleY = (float) bitmap.getHeight() / PrePostProcessor.mInputHeight;
+        float ivScaleX = (float) mResultView.getWidth() / bitmap.getWidth();
+        float ivScaleY = (float) mResultView.getHeight() / bitmap.getHeight();
 
         final ArrayList<Result> results = PrePostProcessor.outputsToNMSPredictions(outputs, imgScaleX, imgScaleY, ivScaleX, ivScaleY, 0, 0);
 
