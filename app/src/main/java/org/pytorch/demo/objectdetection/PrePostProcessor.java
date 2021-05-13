@@ -33,13 +33,16 @@ public class PrePostProcessor {
     // model input image size
     static int mInputWidth = 640 ;
     static int mInputHeight = 640;
-//    static int mInputWidth = 416;
-//    static int mInputHeight = 416;
+//    static int mInputWidth = 320;
+//    static int mInputHeight = 320;
 
 
     // model output is of size 25200*85
     // 6300 when input size is 320
+
     private static int mOutputRow = 25200; // as decided by the YOLOv5 model for input image of size 640*640
+//    private static int mOutputRow = 6300; //25200 // as decided by the YOLOv5 model for input image of size 640*640
+
     private static int mOutputColumn = 7; //85 left, top, right, bottom, score and 80 class probability
     private static float mThreshold = 0.30f; // score above which a detection is generated
     private static int mNmsLimit = 15;

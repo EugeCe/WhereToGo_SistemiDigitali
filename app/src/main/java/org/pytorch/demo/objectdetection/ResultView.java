@@ -30,10 +30,12 @@ public class ResultView extends View {
     private Paint mPaintText;
 
     private Paint mPaintText_time;
+    private Paint mPaintText_average;
 
 
     private ArrayList<Result> mResults;
     private long timeElapsed;
+    private float timeAverage = 0;
 
     public ResultView(Context context) {
         super(context);
@@ -46,6 +48,7 @@ public class ResultView extends View {
         mPaintText = new Paint();
 
         mPaintText_time = new Paint();
+        mPaintText_average = new Paint();
     }
 
     @Override
@@ -53,6 +56,10 @@ public class ResultView extends View {
         super.onDraw(canvas);
 
         if (mResults == null) return;
+
+        int xPos = (canvas.getWidth() / 2);
+        int yPos = (int) canvas.getHeight() - TEXT_Y;
+
         for (Result result : mResults) {
 
             mPaintRectangle.setStrokeWidth(5);
@@ -76,10 +83,6 @@ public class ResultView extends View {
             //end_result
             //start_time
 
-            int xPos = (canvas.getWidth() / 2);
-//            int yPos = (int) ((canvas.getHeight() / 2) - ((mPaintText_time.descent() + mPaintText_time.ascent()) / 2)) ;
-            int yPos = (int) canvas.getHeight() - TEXT_Y;
-
             /*
             Path mPath_time = new Path();
             @SuppressLint("DrawAllocation") RectF mRectF_time = new RectF(xPos,yPos, xPos + TEXT_WIDTH,  yPos + TEXT_HEIGHT);
@@ -95,12 +98,23 @@ public class ResultView extends View {
             mPaintText_time.setTextSize(56);
             mPaintText_time.setTextAlign(Paint.Align.CENTER);
 
-
-            //((textPaint.descent() + textPaint.ascent()) / 2) is the distance from the baseline to the center.
-
-            canvas.drawText(String.format("time: %d ms", timeElapsed), xPos, yPos, mPaintText_time );
+            canvas.drawText(String.format("time: %d ms", timeElapsed), xPos, yPos - 2*TEXT_Y, mPaintText_time );
 
         }
+
+
+        //average
+        mPaintText_average.setColor(Color.WHITE);
+        mPaintText_average.setStrokeWidth(0);
+        mPaintText_average.setStyle(Paint.Style.FILL_AND_STROKE);
+        mPaintText_average.setTextSize(56);
+        mPaintText_average.setTextAlign(Paint.Align.CENTER);
+
+
+        //((textPaint.descent() + textPaint.ascent()) / 2) is the distance from the baseline to the center.
+
+        canvas.drawText(String.format("average: %.2f ms", timeAverage), xPos, yPos, mPaintText_average);
+
     }
 
     public void setResults(ArrayList<Result> results) {
@@ -111,5 +125,11 @@ public class ResultView extends View {
     public void setResults(ArrayList<Result> results, long timeElapsed) {
         mResults = results;
         this.timeElapsed = timeElapsed;
+    }
+
+    public void setResults(ArrayList<Result> results, long timeElapsed, float timeAverage) {
+        mResults = results;
+        this.timeElapsed = timeElapsed;
+        this.timeAverage = timeAverage;
     }
 }

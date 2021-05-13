@@ -8,7 +8,6 @@ import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.media.Image;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.SystemClock;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
@@ -16,7 +15,6 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.TextureView;
 import android.view.ViewStub;
-import android.widget.EditText;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
@@ -30,19 +28,24 @@ import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.stream.Stream;
 
 public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetectionActivity.AnalysisResult>
         implements GestureDetector.OnDoubleTapListener , GestureDetector.OnGestureListener{
     private Module mModule = null;
     private ResultView mResultView;
+
+    //debug
+    private float averageBitmapTime = 0;
+    private long nBitmapTime = 0;
+
+    //average
+    private float average = 0;
+    private long nAverage = 0;
 
     //Todo Voice variables
     //EditText write;
@@ -147,16 +150,26 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
     static class AnalysisResult {
         private final ArrayList<Result> mResults;
         private final long mTimes;
+        private final float mAverage;
 
 
         public AnalysisResult(ArrayList<Result> results, long times) {
             mResults = results;
             mTimes = times;
+            mAverage = -1;
+        }
+
+        public AnalysisResult(ArrayList<Result> results, long times, float average) {
+            mResults = results;
+            mTimes = times;
+            mAverage = average;
         }
 
         public AnalysisResult(ArrayList<Result> results) {
             mResults = results;
             mTimes = -1;
+            mAverage = -1;
+
         }
     }
 
@@ -175,7 +188,7 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
     @Override
     protected void applyToUiAnalyzeImageResult(AnalysisResult result) {
-        mResultView.setResults(result.mResults, result.mTimes);
+        mResultView.setResults(result.mResults, result.mTimes, average);
 
         //Todo Voice
         if (!result.mResults.isEmpty() && canISpeak /*Useless computation if i cannot speak*/) {
@@ -194,14 +207,14 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
             String toSpeak = "";
             if (nDoors != 0 && nHandles != 0) {
-                toSpeak = nDoors + " doors and " + nHandles + " handles";
+                toSpeak = nDoors + (nDoors == 1 ? " door and " : " doors and " ) + nHandles + (nHandles == 1 ? " handle" : " handles");
             }
             if (nDoors == 0 && nHandles != 0) {
-                toSpeak = nHandles + " handles";
+                toSpeak = nHandles + (nHandles == 1 ? " handle" : " handles");
             }
 
             if (nDoors != 0 && nHandles == 0) {
-                toSpeak = nDoors + " doors";
+                toSpeak = nDoors + (nDoors == 1 ? " door" : " doors" );
             }
             speak(toSpeak);
 
@@ -272,11 +285,23 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
         if (mModule == null) {
             mModule = PyTorchAndroid.loadModuleFromAsset(getAssets(), "yolov5s.torchscript.pt");
         }
+
+        //toDo added in order to get bitmap time
+        long mBitmapStartTime = SystemClock.elapsedRealtime();
+
         Bitmap bitmap = imgToBitmap(image.getImage());
         Matrix matrix = new Matrix();
         matrix.postRotate(90.0f);
         bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
         Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, PrePostProcessor.mInputWidth, PrePostProcessor.mInputHeight, true);
+
+        //toDo added in order to get bitmap time
+        long mBitmapEndTime = SystemClock.elapsedRealtime();
+        long  mBitmapElapsed = mBitmapEndTime - mBitmapStartTime;
+        averageBitmapTime = ( (averageBitmapTime*nBitmapTime) + mBitmapElapsed ) / (nBitmapTime+1);
+        nBitmapTime = nBitmapTime + 1;
+        Log.d("BitMap_time AVERAGE:",averageBitmapTime + " ms | n= " + nBitmapTime );
+
 
         final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resizedBitmap, PrePostProcessor.NO_MEAN_RGB, PrePostProcessor.NO_STD_RGB);
         IValue[] outputTuple = mModule.forward(IValue.from(inputTensor)).toTuple();
@@ -292,9 +317,11 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
         //toDo added in order to get analysis time
         long mLastAnalysisEndTime = SystemClock.elapsedRealtime();
-
         long timeElapsed = mLastAnalysisEndTime - mLastAnalysisStartTime;
+        average = ( (average*nAverage) + timeElapsed ) / (nAverage+1);
+        nAverage = nAverage + 1;
+        Log.d("OverAllTime AVERAGE:",average + " ms | n= " + nAverage);
 
-        return new AnalysisResult(results, timeElapsed);
+        return new AnalysisResult(results, timeElapsed, average);
     }
 }
