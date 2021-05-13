@@ -9,7 +9,6 @@ package org.pytorch.demo.objectdetection;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.util.Size;
 import android.view.TextureView;
 import android.widget.Toast;
@@ -28,6 +27,8 @@ import androidx.core.app.ActivityCompat;
 public abstract class AbstractCameraXActivity<R> extends BaseModuleActivity {
     private static final int REQUEST_CODE_CAMERA_PERMISSION = 200;
     private static final String[] PERMISSIONS = {Manifest.permission.CAMERA};
+
+    private static boolean isAnalyzing = false;
 
     private long mLastAnalysisResultTime;
 
@@ -77,22 +78,28 @@ public abstract class AbstractCameraXActivity<R> extends BaseModuleActivity {
 
         final ImageAnalysisConfig imageAnalysisConfig =
             new ImageAnalysisConfig.Builder()
-                .setTargetResolution(new Size(480, 640))
+                .setTargetResolution(new Size(320, 320))
                 .setCallbackHandler(mBackgroundHandler)
                 .setImageReaderMode(ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
                 .build();
+
         final ImageAnalysis imageAnalysis = new ImageAnalysis(imageAnalysisConfig);
-        imageAnalysis.setAnalyzer((image, rotationDegrees) -> {
-            if (SystemClock.elapsedRealtime() - mLastAnalysisResultTime < 500) {
+
+        imageAnalysis.setAnalyzer( (image, rotationDegrees) -> {
+
+            if (isAnalyzing) {
                 return;
             }
+            isAnalyzing = true;
 
             final R result = analyzeImage(image, rotationDegrees);
 
             if (result != null) {
-                mLastAnalysisResultTime = SystemClock.elapsedRealtime();
                 runOnUiThread(() -> applyToUiAnalyzeImageResult(result));
             }
+
+            isAnalyzing = false;
+
         });
 
         CameraX.bindToLifecycle(this, preview, imageAnalysis);
