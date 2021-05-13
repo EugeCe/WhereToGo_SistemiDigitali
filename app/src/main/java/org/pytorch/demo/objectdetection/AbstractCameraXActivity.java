@@ -78,7 +78,7 @@ public abstract class AbstractCameraXActivity<R> extends BaseModuleActivity {
 
         final ImageAnalysisConfig imageAnalysisConfig =
             new ImageAnalysisConfig.Builder()
-                .setTargetResolution(new Size(320, 320))
+                .setTargetResolution(new Size(PrePostProcessor.mInputWidth == 640 ? 640 : 320, PrePostProcessor.mInputHeight == 640 ? 480 : 320))
                 .setCallbackHandler(mBackgroundHandler)
                 .setImageReaderMode(ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
                 .build();
