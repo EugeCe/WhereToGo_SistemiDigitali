@@ -48,10 +48,11 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Properties;
 
 public class MainActivity extends AppCompatActivity implements Runnable {
-    public static final String MODEL_FILE = "yolov5s.torchscript.pt";
-    public static final String CLASSES_FILE = "classes.txt";
+    public static String class_file = "";//"classes.txt";
+    public static String model_file = "";//"yolov5s.torchscript.pt";
     private int mImageIndex = 0;
     private String[] mTestImages = {"test1.png", "test2.png", "test3.png"};
 
@@ -67,6 +68,33 @@ public class MainActivity extends AppCompatActivity implements Runnable {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+//        //loading properties
+//        try {
+//            Properties properties = new Properties();
+//            properties.load(getResources().openRawResource(R.raw.config));
+//            model_file = properties.getProperty("model.model_file");
+//            class_file = properties.getProperty("model.class_file");
+//
+//            //prepostprocessor
+//            PrePostProcessor.mInputWidth = Integer.parseInt(properties.getProperty("model.inputWidth"));
+//            PrePostProcessor.mInputHeight = Integer.parseInt(properties.getProperty("model.inputHeight"));
+//
+//            PrePostProcessor.mNmsLimit = Integer.parseInt(properties.getProperty("model.nmsLimit"));
+//
+//            PrePostProcessor.mOutputColumn = Integer.parseInt(properties.getProperty("model.outputColumn"));
+//
+//            PrePostProcessor.mOutputRow = Integer.parseInt(properties.getProperty("model.outputRow"));
+//
+//            PrePostProcessor.mThreshold = Float.parseFloat(properties.getProperty("model.threshold"));
+//
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            Log.e("Object Detection", "Error reading config file", e);
+//            finish();
+//        }
+
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
@@ -174,8 +202,8 @@ public class MainActivity extends AppCompatActivity implements Runnable {
         });
 
         try {
-            mModule = PyTorchAndroid.loadModuleFromAsset(getAssets(), MODEL_FILE);
-            BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open(CLASSES_FILE)));
+            mModule = PyTorchAndroid.loadModuleFromAsset(getAssets(), model_file);
+            BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open(class_file)));
             String line;
             List<String> classes = new ArrayList<>();
             while ((line = br.readLine()) != null) {

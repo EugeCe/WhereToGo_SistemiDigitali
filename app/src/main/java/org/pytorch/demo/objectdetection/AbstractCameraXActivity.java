@@ -9,6 +9,7 @@ package org.pytorch.demo.objectdetection;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Size;
 import android.view.TextureView;
 import android.widget.Toast;
@@ -24,9 +25,16 @@ import androidx.camera.core.Preview;
 import androidx.camera.core.PreviewConfig;
 import androidx.core.app.ActivityCompat;
 
+import java.io.IOException;
+import java.util.Properties;
+
 public abstract class AbstractCameraXActivity<R> extends BaseModuleActivity {
     private static final int REQUEST_CODE_CAMERA_PERMISSION = 200;
     private static final String[] PERMISSIONS = {Manifest.permission.CAMERA};
+
+//    properties
+    private int inputWidth = 320;
+    private int inputHeight = 320;
 
     private static boolean isAnalyzing = false;
 
@@ -42,6 +50,19 @@ public abstract class AbstractCameraXActivity<R> extends BaseModuleActivity {
         setContentView(getContentViewLayoutId());
 
         startBackgroundThread();
+
+        //loading properties
+        try {
+            Properties properties = new Properties();
+            properties.load(getResources().openRawResource(org.pytorch.demo.objectdetection.R.raw.config));
+            inputWidth  = Integer.parseInt(properties.getProperty("analyzer.targetResolution.width"));
+            inputHeight = Integer.parseInt(properties.getProperty("analyzer.targetResolution.height"));
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e("Object Detection", "Error reading config file", e);
+            finish();
+        }
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED) {
@@ -78,7 +99,7 @@ public abstract class AbstractCameraXActivity<R> extends BaseModuleActivity {
 
         final ImageAnalysisConfig imageAnalysisConfig =
             new ImageAnalysisConfig.Builder()
-                .setTargetResolution(new Size(PrePostProcessor.mInputWidth == 640 ? 640 : 320, PrePostProcessor.mInputHeight == 640 ? 480 : 320))
+                .setTargetResolution(new Size(inputWidth, inputHeight))
                 .setCallbackHandler(mBackgroundHandler)
                 .setImageReaderMode(ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
                 .build();

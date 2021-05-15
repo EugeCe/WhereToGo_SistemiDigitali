@@ -27,10 +27,15 @@ import org.pytorch.PyTorchAndroid;
 import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -38,6 +43,10 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
         implements GestureDetector.OnDoubleTapListener , GestureDetector.OnGestureListener{
     private Module mModule = null;
     private ResultView mResultView;
+
+    private String model_file;
+    private String class_file;
+
 
     //debug
     private float averageBitmapTime = 0;
@@ -51,11 +60,12 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
     //EditText write;
     private TextToSpeech ttobj;
     private Boolean canISpeak = true;
+    private Boolean isVoiceOn = true;
 
 
     //timer
     private Timer timer;
-    public static final int VOICE_INTERVAL = 1500;
+    public static final int VOICE_INTERVAL = 1000;
     //end
 
     //gestures
@@ -66,6 +76,50 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
     protected void onCreate(Bundle savedInstance) {
 
         super.onCreate(savedInstance);
+
+        //loading properties
+        try {
+            Properties properties = new Properties();
+            properties.load(getResources().openRawResource(R.raw.config));
+            model_file = properties.getProperty("model.model_file");
+            class_file = properties.getProperty("model.class_file");
+            //not needed
+            MainActivity.model_file = properties.getProperty("model.model_file");
+            MainActivity.class_file = properties.getProperty("model.class_file");
+
+            //prepostprocessor
+            PrePostProcessor.mInputWidth = Integer.parseInt(properties.getProperty("model.inputWidth"));
+            PrePostProcessor.mInputHeight = Integer.parseInt(properties.getProperty("model.inputHeight"));
+
+            PrePostProcessor.mNmsLimit = Integer.parseInt(properties.getProperty("model.nmsLimit"));
+
+            PrePostProcessor.mOutputColumn = Integer.parseInt(properties.getProperty("model.outputColumn"));
+
+            PrePostProcessor.mOutputRow = Integer.parseInt(properties.getProperty("model.outputRow"));
+
+            PrePostProcessor.mThreshold = Float.parseFloat(properties.getProperty("model.threshold"));
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e("Object Detection", "Error reading config file", e);
+            finish();
+        }
+
+        try {
+            mModule = PyTorchAndroid.loadModuleFromAsset(getAssets(), model_file);
+            BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open(class_file)));
+            String line;
+            List<String> classes = new ArrayList<>();
+            while ((line = br.readLine()) != null) {
+                classes.add(line);
+            }
+            PrePostProcessor.mClasses = new String[classes.size()];
+            classes.toArray(PrePostProcessor.mClasses);
+        } catch (IOException e) {
+            Log.e("Object Detection", "Error reading assets", e);
+            finish();
+        }
 
         //Todo Gesture
         mDetector = new GestureDetectorCompat(this, this);
@@ -101,12 +155,12 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
     @Override
     public boolean onDoubleTap(MotionEvent e) {
 
-        if(canISpeak){
+        if(isVoiceOn){
             speak("Voice off");
-            canISpeak = false;
+            isVoiceOn = false;
         } else {
             speak("Voice on");
-            canISpeak = true;
+            isVoiceOn = true;
         }
 
         return true;
@@ -191,19 +245,19 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
         mResultView.setResults(result.mResults, result.mTimes, average);
 
         //Todo Voice
-        if (!result.mResults.isEmpty() && canISpeak /*Useless computation if i cannot speak*/) {
+        if ( isVoiceOn && canISpeak /*Useless computation if i cannot speak*/ && !result.mResults.isEmpty()) {
 
-            long nDoors = result.mResults.stream().map(x ->
-                            x.classIndex
-                    //PrePostProcessor.mClasses[]
-            ).filter(
-                    x -> x == 0).count();
+            canISpeak = false;
 
-            long nHandles = result.mResults.stream().map(x ->
-                            x.classIndex
-                    //PrePostProcessor.mClasses[]
-            ).filter(
-                    x -> x == 1).count();
+            //The computation cannot give many results
+            int nDoors = (int) result.mResults.stream().
+                    map(x -> x.classIndex).
+                    filter(x -> x == 0).count();
+
+            //The computation cannot give many results
+            int nHandles = (int) result.mResults.stream().
+                    map(x -> x.classIndex).
+                    filter(x -> x == 1).count();
 
             String toSpeak = "";
             if (nDoors != 0 && nHandles != 0) {
@@ -220,7 +274,6 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
             //String mClass = PrePostProcessor.mClasses[result.classIndex];
 
-            canISpeak = false;
             //If i double taped the screen here
             //there is inconsistence possibitity.
             //It can be fixed with another boolean "voiceOn"
@@ -240,7 +293,7 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
 
     private void speak(String toSpeak) {
-        if (canISpeak)
+        if (isVoiceOn)
             ttobj.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null, "");
     }
 
@@ -283,7 +336,7 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
         long mLastAnalysisStartTime = SystemClock.elapsedRealtime();
 
         if (mModule == null) {
-            mModule = PyTorchAndroid.loadModuleFromAsset(getAssets(), "yolov5s.torchscript.pt");
+            mModule = PyTorchAndroid.loadModuleFromAsset(getAssets(), model_file);
         }
 
         //toDo added in order to get bitmap time
