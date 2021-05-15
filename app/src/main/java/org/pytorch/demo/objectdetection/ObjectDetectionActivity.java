@@ -83,9 +83,6 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
             properties.load(getResources().openRawResource(R.raw.config));
             model_file = properties.getProperty("model.model_file");
             class_file = properties.getProperty("model.class_file");
-            //not needed
-            MainActivity.model_file = properties.getProperty("model.model_file");
-            MainActivity.class_file = properties.getProperty("model.class_file");
 
             //prepostprocessor
             PrePostProcessor.mInputWidth = Integer.parseInt(properties.getProperty("model.inputWidth"));
@@ -98,7 +95,6 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
             PrePostProcessor.mOutputRow = Integer.parseInt(properties.getProperty("model.outputRow"));
 
             PrePostProcessor.mThreshold = Float.parseFloat(properties.getProperty("model.threshold"));
-
 
         } catch (IOException e) {
             e.printStackTrace();

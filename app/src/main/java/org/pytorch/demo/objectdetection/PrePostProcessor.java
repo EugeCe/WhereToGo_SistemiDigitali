@@ -33,7 +33,7 @@ public class PrePostProcessor {
     // model input image size
 //    static int mInputWidth = 640 ;
 //    static int mInputHeight = 640;
-    protected static int mInputWidth = 0;//320;
+    protected static int mInputWidth = 320;
     protected static int mInputHeight = 320;
 
 
