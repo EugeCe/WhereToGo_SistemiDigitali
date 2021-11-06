@@ -18,6 +18,11 @@ class Result {
     Float score;
     Rect rect;
 
+    public Result(){
+        this.classIndex = -1;
+        this.score = null;
+        this.rect = null;
+    }
     public Result(int cls, Float output, Rect rect) {
         this.classIndex = cls;
         this.score = output;

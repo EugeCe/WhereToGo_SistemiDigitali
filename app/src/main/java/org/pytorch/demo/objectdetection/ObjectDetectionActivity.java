@@ -62,10 +62,12 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
     private Boolean canISpeak = true;
     private Boolean isVoiceOn = true;
 
+    //offset
+    private int offset = 0;
 
     //timer
     private Timer timer;
-    public static final int VOICE_INTERVAL = 1000;
+    public static final int VOICE_INTERVAL = 1700;
     //end
 
     //gestures
@@ -238,25 +240,52 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
     @Override
     protected void applyToUiAnalyzeImageResult(AnalysisResult result) {
-        mResultView.setResults(result.mResults, result.mTimes, average);
+        //mResultView.setResults(result.mResults, result.mTimes, average);
+        Result bestDoor = new Result();
+        Result bestHandle = new Result();
+        ArrayList<Result> results = new ArrayList<Result>();
+
+        //recupero la miglior porta
+        try {
+            bestDoor = result.mResults.stream().filter(x -> x.classIndex == 0).max((x, y) -> (int) (x.score * 100 - y.score * 100)).get();
+            results.add(bestDoor);
+        } catch(Exception e) {
+            System.out.print("Porta non trovata");
+        }
+
+        //recupero la maniglia relativa alla porta trovata prima
+        try {
+            Result finalBestDoor = bestDoor;
+            bestHandle = result.mResults.stream().filter(x -> x.classIndex == 1).filter(
+                    x -> {
+                        if (x.rect.intersect(finalBestDoor.rect))
+                            return true;
+                        return false;
+                    }).findFirst().get();
+
+            offset = bestDoor.rect.centerX() - bestHandle.rect.centerX();
+            results.add(bestHandle);
+
+        } catch (Exception e) {
+            System.out.print("Non ho trovato maniglie");
+        }
+        mResultView.setResults(results, result.mTimes, average);
 
         //Todo Voice
         if ( isVoiceOn && canISpeak /*Useless computation if i cannot speak*/ && !result.mResults.isEmpty()) {
-
             canISpeak = false;
-
+            StringBuilder toSpeak = new StringBuilder();
             //The computation cannot give many results
-            int nDoors = (int) result.mResults.stream().
-                    map(x -> x.classIndex).
-                    filter(x -> x == 0).count();
+            /* int nDoors = (int) result.mResults.stream().
+                        map(x -> x.classIndex).
+                        filter(x -> x == 0).count();
 
-            //The computation cannot give many results
-            int nHandles = (int) result.mResults.stream().
-                    map(x -> x.classIndex).
-                    filter(x -> x == 1).count();
+                //The computation cannot give many results
+                int nHandles = (int) result.mResults.stream().
+                        map(x -> x.classIndex).
+                        filter(x -> x == 1).count();
 
-            String toSpeak = "";
-            if (nDoors != 0 && nHandles != 0) {
+               if (nDoors != 0 && nHandles != 0) {
                 toSpeak = nDoors + (nDoors == 1 ? " door and " : " doors and " ) + nHandles + (nHandles == 1 ? " handle" : " handles");
             }
             if (nDoors == 0 && nHandles != 0) {
@@ -265,8 +294,17 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
             if (nDoors != 0 && nHandles == 0) {
                 toSpeak = nDoors + (nDoors == 1 ? " door" : " doors" );
+            }*/
+
+            if(bestDoor != null){
+                toSpeak.append("Door detected");
             }
-            speak(toSpeak);
+            if(bestHandle != null){
+                toSpeak.append("with an handle on the");
+                toSpeak.append(offset > 0 ? "left" : "right");
+            }
+            speak(toSpeak.toString());
+            
 
             //String mClass = PrePostProcessor.mClasses[result.classIndex];
 
@@ -274,15 +312,17 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
             //there is inconsistence possibitity.
             //It can be fixed with another boolean "voiceOn"
             timer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    canISpeak = true;
-                }
+                   @Override
+            public void run() {
+            canISpeak = true;
+                    }
 
-            }, VOICE_INTERVAL);
-        }
+                }, VOICE_INTERVAL);
+            }
 
-        mResultView.invalidate();
+
+            mResultView.invalidate();
+
 
 
     }
