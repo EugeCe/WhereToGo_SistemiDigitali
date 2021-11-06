@@ -67,7 +67,7 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
     //timer
     private Timer timer;
-    public static final int VOICE_INTERVAL = 1700;
+    public static final int VOICE_INTERVAL = 1800;
     //end
 
     //gestures
@@ -242,13 +242,15 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
     protected void applyToUiAnalyzeImageResult(AnalysisResult result) {
         //mResultView.setResults(result.mResults, result.mTimes, average);
         Result bestDoor = new Result();
-        Result bestHandle = new Result();
+        //Result bestHandle = new Result();
         ArrayList<Result> results = new ArrayList<Result>();
+        StringBuilder toSpeak = new StringBuilder();
 
         //recupero la miglior porta
         try {
             bestDoor = result.mResults.stream().filter(x -> x.classIndex == 0).max((x, y) -> (int) (x.score * 100 - y.score * 100)).get();
             results.add(bestDoor);
+            toSpeak.append("Door detected");
         } catch(Exception e) {
             System.out.print("Porta non trovata");
         }
@@ -256,7 +258,7 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
         //recupero la maniglia relativa alla porta trovata prima
         try {
             Result finalBestDoor = bestDoor;
-            bestHandle = result.mResults.stream().filter(x -> x.classIndex == 1).filter(
+            Result bestHandle = result.mResults.stream().filter(x -> x.classIndex == 1).filter(
                     x -> {
                         if (x.rect.intersect(finalBestDoor.rect))
                             return true;
@@ -265,6 +267,8 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
             offset = bestDoor.rect.centerX() - bestHandle.rect.centerX();
             results.add(bestHandle);
+            toSpeak.append("with an handle on the ");
+            toSpeak.append(offset > 0 ? "left" : "right");
 
         } catch (Exception e) {
             System.out.print("Non ho trovato maniglie");
@@ -274,7 +278,6 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
         //Todo Voice
         if ( isVoiceOn && canISpeak /*Useless computation if i cannot speak*/ && !result.mResults.isEmpty()) {
             canISpeak = false;
-            StringBuilder toSpeak = new StringBuilder();
             //The computation cannot give many results
             /* int nDoors = (int) result.mResults.stream().
                         map(x -> x.classIndex).
@@ -295,14 +298,6 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
             if (nDoors != 0 && nHandles == 0) {
                 toSpeak = nDoors + (nDoors == 1 ? " door" : " doors" );
             }*/
-
-            if(bestDoor != null){
-                toSpeak.append("Door detected");
-            }
-            if(bestHandle != null){
-                toSpeak.append("with an handle on the");
-                toSpeak.append(offset > 0 ? "left" : "right");
-            }
             speak(toSpeak.toString());
             
 
@@ -316,14 +311,10 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
             public void run() {
             canISpeak = true;
                     }
-
                 }, VOICE_INTERVAL);
             }
 
-
             mResultView.invalidate();
-
-
 
     }
 
