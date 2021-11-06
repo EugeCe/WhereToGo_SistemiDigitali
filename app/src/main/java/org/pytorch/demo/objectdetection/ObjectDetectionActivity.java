@@ -10,6 +10,7 @@ import android.media.Image;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.speech.tts.TextToSpeech;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
@@ -41,6 +42,8 @@ import java.util.TimerTask;
 
 public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetectionActivity.AnalysisResult>
         implements GestureDetector.OnDoubleTapListener , GestureDetector.OnGestureListener{
+
+    public static final double DISTANCE_THRESHOLD = 0.55;
     private Module mModule = null;
     private ResultView mResultView;
 
@@ -67,8 +70,13 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
     //timer
     private Timer timer;
-    public static final int VOICE_INTERVAL = 1800;
+    public static final int VOICE_INTERVAL = 5000;
     //end
+
+    //display rect
+    private float displayArea = 0;
+    private float displayHeigh = 0;
+    private Rect displayRect = null;
 
     //gestures
     private GestureDetectorCompat mDetector;
@@ -78,6 +86,14 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
     protected void onCreate(Bundle savedInstance) {
 
         super.onCreate(savedInstance);
+
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        int height = displayMetrics.heightPixels;
+        int width = displayMetrics.widthPixels;
+        displayArea = height * width;
+        displayHeigh = height;
+        displayRect = new Rect(0,0, width, height);
 
         //loading properties
         try {
@@ -245,15 +261,43 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
         //Result bestHandle = new Result();
         ArrayList<Result> results = new ArrayList<Result>();
         StringBuilder toSpeak = new StringBuilder();
+        float percentage = 0;
 
         //recupero la miglior porta
         try {
             bestDoor = result.mResults.stream().filter(x -> x.classIndex == 0).max((x, y) -> (int) (x.score * 100 - y.score * 100)).get();
             results.add(bestDoor);
-            toSpeak.append("Door detected");
+
+            float doorArea = bestDoor.rect.width() * bestDoor.rect.height();
+
+            percentage = doorArea / displayArea;
+            //percentage =  bestDoor.rect.height() / displayHeigh;
+
+            //if(percentage < 50)
+            //Log.d("percentage: " , percentage + "");
+            //Log.d("display area: " , displayArea + "");
+            //Log.d("door area: " , doorArea + "");
+
+
+            int doorPosition = bestDoor.rect.centerX() - displayRect.centerX();
+            boolean isNotOnTheCenter = Math.abs(doorPosition) > (displayRect.width()/3.5);
+
+            Log.d("door centro: " , bestDoor.rect.centerX() + "");
+            Log.d("door Larghez: " , bestDoor.rect.width() + "");
+
+            toSpeak.append("Door detected ");
+            if (percentage > DISTANCE_THRESHOLD)
+                toSpeak.append("in front of you ");
+            else {//here the voice about the handle is off
+                if(isNotOnTheCenter)
+                    toSpeak.append(doorPosition < 0 ? " on the left " : " on the right ");
+                toSpeak.append(" far from you, get closer");
+            }
+
         } catch(Exception e) {
             System.out.print("Porta non trovata");
         }
+
 
         //recupero la maniglia relativa alla porta trovata prima
         try {
@@ -267,12 +311,16 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
 
             offset = bestDoor.rect.centerX() - bestHandle.rect.centerX();
             results.add(bestHandle);
-            toSpeak.append("with an handle on the ");
-            toSpeak.append(offset > 0 ? "left" : "right");
+            if (percentage > DISTANCE_THRESHOLD) {
+                toSpeak.append("with an handle on the ");
+                toSpeak.append(offset > 0 ? "left" : "right");
+            }
 
         } catch (Exception e) {
             System.out.print("Non ho trovato maniglie");
         }
+
+
         mResultView.setResults(results, result.mTimes, average);
 
         //Todo Voice
@@ -299,7 +347,7 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
                 toSpeak = nDoors + (nDoors == 1 ? " door" : " doors" );
             }*/
             speak(toSpeak.toString());
-            
+
 
             //String mClass = PrePostProcessor.mClasses[result.classIndex];
 
@@ -307,12 +355,13 @@ public class ObjectDetectionActivity extends AbstractCameraXActivity<ObjectDetec
             //there is inconsistence possibitity.
             //It can be fixed with another boolean "voiceOn"
             timer.schedule(new TimerTask() {
-                   @Override
-            public void run() {
-            canISpeak = true;
-                    }
-                }, VOICE_INTERVAL);
-            }
+                @Override
+                public void run() {
+                    canISpeak = true;
+                }
+            }, VOICE_INTERVAL);
+        }
+
 
             mResultView.invalidate();
 
